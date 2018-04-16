@@ -6,16 +6,16 @@ import numpy as np
 from pulp import *
 from math import floor
 
-#Excelfile import
+# Excelfile import
 excelfile = ("input_file.xlsm")
 wb = xw.Book(excelfile)
 
-## clear costs from previous runs
+# clear costs from previous runs
 for sh in range(1,len(wb.sheets)):
     wb.sheets[sh].range("A15:A16").value = 0
 
 class EnergyModel(Model):
-    """A model with some entities"""
+    # model with some entities
     def __init__(self):
 
         # list of named activated agents by sheetname
@@ -24,10 +24,10 @@ class EnergyModel(Model):
         self.num_agents = len(active_agents)
         self.schedule =  BaseScheduler(self)
 
-        # imports two rows: timesteps=[1:96] and datetimes(e.g. 00:00)
+        # imports timesteps=[1:96] and datetimes(e.g. 00:00)
         self.time = wb.sheets['a1'].range("C3:D99").options(pd.Series).value
 
-        #timesteps=[1:96]
+        # timesteps=[1:96]
         self.timeindex = self.time.index
 
         # Create Prosumer agents
@@ -41,24 +41,24 @@ class EnergyModel(Model):
 
 
 class Prosumer(Agent):
-    #An agent with pv, battery and demand
+    # agent with pv, battery and demand
     def __init__(self, unique_id, model,name):
         super().__init__(unique_id, model)
 
-        # Agents Properties
+        # agents Properties
         self.name = name
         self.costs = 0
         self.run_status = 0
 
-        # Agent's Excelsheet
+        # agent's Excelsheet
         self.sht = wb.sheets[self.name]
         self.agent_ts = self.sht.range("C3:Q99").options(pd.DataFrame).value
 
-        # Get agent parameter input
+        # get agent parameter input
         self.agent_p = self.sht.range("A1:B13").options(pd.Series).value
         self.paramdict = self.agent_p.to_dict()
 
-        # Get dict values for each agent
+        # get dict values for each agent
         self.min_dis = self.paramdict.get("min_dis")
         self.max_dis = self.paramdict.get("max_dis")
         self.min_char = self.paramdict.get("min_cha")
@@ -86,7 +86,7 @@ class Prosumer(Agent):
         pass
 
     def optimize(self):
-        # creates period (-> HORIZONT)
+        # creates periods (-> input agent's HORIZONT)
         self.timeframes = self.periodIndexer()
         # LP Relaxation for all timeframes
         self.lpRelax()
@@ -122,7 +122,7 @@ class Prosumer(Agent):
         lpmodel = LpProblem("AGENT_OPT_01",LpMinimize)
         print ("Run: {}".format(lpmodel.name))
 
-        # SLICES UP THE FILE'S TIMEINDEX IN A NUMBER OF PERIODS(by using Horizont from ExcelSheet)
+        # call every period in self.timeframes and optimize it one by one
         for i,j in enumerate(self.timeframes):
             print("Periodnr.: {}".format(i+1))
             actindex = int(j)
